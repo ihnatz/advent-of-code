@@ -1,10 +1,10 @@
-class Bag
-  Rule = Struct.new(:quantity, :color)
-  attr_reader :color
+class ColorDescription
+  Rule = Struct.new(:quantity, :color_name)
+  attr_reader :color_name
   attr_reader :rules
 
-  def initialize(color)
-    @color = color
+  def initialize(color_name)
+    @color_name = color_name
     @rules = []
   end
 
@@ -23,43 +23,43 @@ descriptions = File
   .map { [_1, _2.map { |desc| desc.split(' ', 2)}] }
   .map { [_1, _2.map { |(count, color)| [count.to_i, color] }]}
 
-MAPPING = {}
-descriptions.each do |color, content|
-  if MAPPING[color].nil?
-    MAPPING[color] = Bag.new(color)
-  end
-  color_rules = MAPPING[color]
+def build_mapping(descriptions)
+  descriptions.inject({}) do |mapping, (color_name, content)|
+    color_rules = mapping.fetch(color_name) { mapping[color_name] = ColorDescription.new(color_name) }
 
-  content.each do |(count, rule_color)|
-    if MAPPING[rule_color].nil?
-      MAPPING[rule_color] = Bag.new(rule_color)
+    content.each do |(count, rule_color_name)|
+      mapping[rule_color_name] ||= ColorDescription.new(rule_color_name)
+      mapping[color_name].push(count, rule_color_name)
     end
-    MAPPING[color].push(count, rule_color)
+
+    mapping
   end
 end
 
-def traverse_color(color_name)
+EXPECTED_COLOR = 'shiny gold'
+MAPPING = build_mapping(descriptions)
+
+def can_contain_color?(color_name)
   color = MAPPING[color_name]
-  return true if color.color == "shiny gold"
-  return true if color.rules.any? { |rule| rule.color == "shiny gold" }
-  return false if color.rules.empty?
-  return color.rules.any? { |rule| traverse_color(rule.color) }
+  return true if color.color_name == EXPECTED_COLOR
+  return color.rules.any? { |rule| can_contain_color?(rule.color_name) }
 end
 
-puzzle1 = MAPPING.count do |color_name, color_description|
-  color_description.rules.any? { |rule| traverse_color(rule.color) }
-end
-
-def deep_traverse(color_name, total = 0)
+def count_bags_for(color_name, total = 0)
   color = MAPPING[color_name]
   return 0 if color.rules.empty?
 
-  this_color_count = color.rules.sum do |rule|
-    rule.quantity * deep_traverse(rule.color)
+  this_color_bags_inside = color.rules.sum do |rule|
+    rule.quantity * count_bags_for(rule.color_name)
   end
-  total + this_color_count + color.rules.sum(&:quantity)
+  this_color_bags_itself = color.rules.sum(&:quantity)
+
+  [total, this_color_bags_inside, this_color_bags_itself].sum
 end
 
-puzzle2 = deep_traverse('shiny gold')
+puzzle1 = MAPPING.values.count do |color_description|
+  color_description.rules.any? { |rule| can_contain_color?(rule.color_name) }
+end
+puzzle2 = count_bags_for(EXPECTED_COLOR)
 
 p [puzzle1, puzzle2]
