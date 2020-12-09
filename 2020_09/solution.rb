@@ -14,10 +14,10 @@ puzzle2 = input.length.times { |i|
   sequence = loop {
     window = input.drop(i).slice(0, window_size)
     break window if window.sum == puzzle1
-    break nil if window.sum > puzzle1
+    break if window.sum > puzzle1
     window_size += 1
   }
-  break(sequence.min + sequence.max) if sequence
+  break sequence.minmax.sum if sequence
 }
 
 p [puzzle1, puzzle2]
