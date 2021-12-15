@@ -35,10 +35,8 @@ answer1 = template.chars.tally.values.minmax.reduce(:-).abs
 
 template, _ = input.split("\n\n")
 pairs = template.chars.each_cons(2).to_a
-pairs_dict = Hash.new(0)
-pairs.each do |pair|
-  pairs_dict[pair.join] += 1
-end
+
+pairs_dict = pairs.each_with_object(Hash.new(0)) { |pair, total| total[pair.join] += 1 }
 
 N2.times do
   new_pairs = Hash.new(0)
