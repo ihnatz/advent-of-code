@@ -1,13 +1,11 @@
 require 'set'
 
 data = File.read("input.txt").split("\n").map { |line|
-  id, rest =  line.split(" @ ")
-  id = id.slice(1..).to_i
-  cords, size = rest.split(": ")
-  off_left, off_top = cords.split(",").map(&:to_i)
+  id, offset, size = line.delete("@:").split(/\s+/)
+  off_left, off_top = offset.split(",").map(&:to_i)
   width, height = size.split("x").map(&:to_i)
 
-  [id, off_left, off_top, width, height]
+  [id.slice(1..).to_i, off_left, off_top, width, height]
 }
 
 max_right  = data.map { |_, off_left, _, width, _| off_left + width }.max + 1
