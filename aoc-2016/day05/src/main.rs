@@ -1,6 +1,8 @@
 use md5::{Digest, Md5};
+use std::{sync::mpsc, thread};
 
 const INPUT: &str = "ugkcyxxp";
+const WORKERS: u32 = 3;
 
 fn to_hex_string(bytes: &[u8]) -> String {
     bytes
@@ -36,30 +38,75 @@ fn verify(candidate: &str, part2: bool) -> Option<(usize, char)> {
     }
 }
 
-fn main() {
-    let part1: String = (0..)
-        .map(|i| format!("{INPUT}{i}"))
-        .filter_map(|candidate| verify(&candidate, false).map(|(_, ch)| ch))
-        .take(8)
-        .collect();
+fn solve_part1() -> String {
+    let (tx, rx) = mpsc::channel();
 
-    println!("Part1: {part1}");
+    for i in 0..WORKERS {
+        let newtx = tx.clone();
 
-    let mut part2 = [' '; 8];
-    let mut found = 0;
-
-    for i in 0.. {
-        let candidate = format!("{INPUT}{i}");
-        if let Some((idx, ch)) = verify(&candidate, true) {
-            if part2[idx] == ' ' {
-                part2[idx] = ch;
-                found += 1;
-                if found == 8 {
-                    break;
+        thread::spawn(move || {
+            let mut current = i;
+            loop {
+                if let Some((_, ch)) = verify(&format!("{INPUT}{current}"), false) {
+                    newtx.send((current, ch)).unwrap_or_default();
                 }
+                current += WORKERS;
             }
+        });
+    }
+
+    let mut collected: Vec<_> = Vec::new();
+
+    for (tick, ch) in rx {
+        collected.push((tick, ch));
+        if collected.len() == 8 {
+            break;
         }
     }
 
-    println!("Part2: {}", part2.iter().collect::<String>());
+    collected.sort_by_key(|(tick, _ch)| *tick);
+    collected.iter().map(|(_tick, ch)| ch).collect::<String>()
+}
+
+fn solve_part2() -> String {
+    let (tx, rx) = mpsc::channel();
+
+    for i in 0..WORKERS {
+        let newtx = tx.clone();
+
+        thread::spawn(move || {
+            let mut current = i;
+            loop {
+                if let Some((idx, ch)) = verify(&format!("{INPUT}{current}"), true) {
+                    newtx.send((current, idx, ch)).unwrap_or_default();
+                }
+                current += WORKERS;
+            }
+        });
+    }
+
+    let mut idxs = [u32::MAX; 8];
+    let mut part2 = [' '; 8];
+    let mut found = 0;
+
+    for (current, idx, ch) in rx {
+        if current < idxs[idx] {
+            if part2[idx] == ' ' {
+                found += 1;
+            }
+            part2[idx] = ch;
+            idxs[idx] = current;
+        }
+
+        if found == 8 {
+            break;
+        }
+    }
+
+    part2.iter().collect::<String>()
+}
+
+fn main() {
+    println!("Part1: {}", solve_part1());
+    println!("Part2: {}", solve_part2());
 }
